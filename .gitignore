@@ -1,0 +1,10 @@
+
+# Ignore build generated files
+build
+
+# Ignore waf lock file
+.lock-waf*
+
+# Ignore system files
+.DS_Store
+*.swp

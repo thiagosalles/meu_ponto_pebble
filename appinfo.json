@@ -1,0 +1,28 @@
+{
+	"uuid": "220833f7-1ac8-4e58-bb8c-123c3cc1bb4f",
+	"shortName": "Meu Ponto",
+	"longName": "Meu Ponto",
+	"companyName": "Thiago Salles",
+	"versionLabel": "1.0",
+	"sdkVersion": "3",
+	"watchapp": {
+		"watchface": false
+	},
+	"appKeys": {
+		"dummy": 0
+	},
+	"resources": {
+		"media": [
+			{
+				"type": "png",
+				"name": "ENTRY_TYPE_GRID",
+				"file": "images/entry_type_grid.png"
+			},
+			{
+				"type": "png",
+				"name": "ENTRY_TYPE_FILL",
+				"file": "images/entry_type_fill.png"
+			}
+		]
+	}
+}
