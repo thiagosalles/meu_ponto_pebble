@@ -11,6 +11,16 @@
     "resources": {
         "media": [
             {
+                "file": "images/cross.png",
+                "name": "CROSS_ICON",
+                "type": "png"
+            },
+            {
+                "file": "images/tick.png",
+                "name": "TICK_ICON",
+                "type": "png"
+            },
+            {
                 "file": "images/menu_icon.png",
                 "menuIcon": true,
                 "name": "MENU_ICON",
