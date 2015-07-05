@@ -11,6 +11,12 @@
     "resources": {
         "media": [
             {
+                "file": "images/menu_icon.png",
+                "menuIcon": true,
+                "name": "MENU_ICON",
+                "type": "png"
+            },
+            {
                 "file": "images/entry_type_fill.png",
                 "name": "ENTRY_TYPE_FILL",
                 "type": "png"
@@ -24,6 +30,10 @@
     },
     "sdkVersion": "3",
     "shortName": "Meu Ponto",
+    "targetPlatforms": [
+        "aplite",
+        "basalt"
+    ],
     "uuid": "220833f7-1ac8-4e58-bb8c-123c3cc1bb4f",
     "versionLabel": "1.0",
     "watchapp": {
