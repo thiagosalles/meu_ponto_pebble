@@ -2,8 +2,10 @@
 
 #define GRID_POS_X 9
 #define GRID_POS_Y 45
-#define SEPARATOR_Y 115
+#define SEPARATOR_Y 106
 #define ENTRY_TYPE_Y 5
+#define TIME_Y 50
+#define DATE_Y 110
 
 typedef enum EntryType {
 	ENTRY_1 = 0,
@@ -29,6 +31,45 @@ static BitmapLayer *s_entry_type_grid_layer;
 static BitmapLayer *s_date_separator_layer;
 static GBitmap *s_entry_type_fill_bitmap;
 static BitmapLayer *s_entry_type_fill_layer;
+static time_t s_date;
+static time_t s_time;
+static TextLayer *s_date_layer;
+static TextLayer *s_time_layer;
+
+static void print_time() {
+	struct tm *temp_time = localtime(&s_time);
+	static char buffer[] = "00:00";
+	strftime(buffer, sizeof("00:00"), "%H:%M", temp_time);
+	text_layer_set_text(s_time_layer, buffer);
+}
+
+static void change_to_current_time() {
+	if (s_date) vibes_short_pulse();
+	s_time = time(NULL);
+	print_time();
+}
+
+static void change_date(bool update_to_current) {
+	
+	if (!s_date || update_to_current) {
+		if (s_date) vibes_short_pulse();
+		s_date = time(NULL); 
+	} else {
+		s_date = s_date - (60 * 60 * 24); // Subtracting one day
+	}
+	struct tm *temp_date = localtime(&s_date);
+	
+	// Create a long-lived buffer
+	static char buffer[] = "__/__/____";
+
+	// Write the current hours and minutes into the buffer
+	strftime(buffer, sizeof("__/__/____"), "%d/%m/%Y", temp_date);
+
+	// Display this time on the TextLayer
+	text_layer_set_text(s_date_layer, buffer);
+}
+
+
 
 static void print_entry_type() {
 	APP_LOG(APP_LOG_LEVEL_INFO, "Printing entry type %d.", (int)entry_type);
@@ -42,13 +83,23 @@ static void change_entry_type() {
 	print_entry_type();
 }
 
-static void main_window_up_click_handler(ClickRecognizerRef recognizer, void *context) {
+static void main_window_up_single_click_handler(ClickRecognizerRef recognizer, void *context) {
 	change_entry_type();
+}
+
+static void main_window_down_single_click_handler(ClickRecognizerRef recognizer, void *context) {
+	change_date(false);
+}
+
+static void main_window_down_long_click_handler(ClickRecognizerRef recognizer, void *context) {
+	change_date(true);
 }
 
 static void click_config_provider(void *context) {
 	// Register the ClickHandlers
-	window_single_click_subscribe(BUTTON_ID_UP, main_window_up_click_handler);
+	window_single_click_subscribe(BUTTON_ID_UP, main_window_up_single_click_handler);
+	window_single_click_subscribe(BUTTON_ID_DOWN, main_window_down_single_click_handler);
+	window_long_click_subscribe(BUTTON_ID_DOWN, 0, main_window_down_long_click_handler, NULL);
 }
 
 static void main_window_load(Window *window) {
@@ -76,6 +127,24 @@ static void main_window_load(Window *window) {
 	text_layer_set_text_color(s_entry_type_layer, GColorBlack);
 	text_layer_set_font(s_entry_type_layer, fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD));
 	text_layer_set_text_alignment(s_entry_type_layer, GTextAlignmentCenter);
+	
+	s_date_layer = text_layer_create(GRect(0, DATE_Y, 144, 40));
+	text_layer_set_background_color(s_date_layer, GColorClear);
+	text_layer_set_text_color(s_date_layer, GColorBlack);
+	text_layer_set_font(s_date_layer, fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD));
+	text_layer_set_text_alignment(s_date_layer, GTextAlignmentCenter);
+	
+	s_time_layer = text_layer_create(GRect(0, TIME_Y, 144, 50));
+	text_layer_set_background_color(s_time_layer, GColorClear);
+	text_layer_set_text_color(s_time_layer, GColorBlack);
+	text_layer_set_font(s_time_layer, fonts_get_system_font(FONT_KEY_BITHAM_42_BOLD));
+	text_layer_set_text_alignment(s_time_layer, GTextAlignmentCenter);
+	
+	// Showing the time
+	change_to_current_time();
+	
+	// Showing the date
+	change_date(true);
 
 	// Setting the starting EntryType
 	entry_type = ENTRY_1;
@@ -83,6 +152,8 @@ static void main_window_load(Window *window) {
 
 	// Putting TextLayer on the window
 	layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_entry_type_layer));
+	layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_date_layer));
+	layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_time_layer));
 }
 
 static void main_window_unload(Window *window) {
