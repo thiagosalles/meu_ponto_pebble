@@ -36,6 +36,13 @@ static time_t s_time;
 static TextLayer *s_date_layer;
 static TextLayer *s_time_layer;
 
+// Register window
+static Window *s_register_window;
+static ActionBarLayer *s_confirm_action_layer;
+static GBitmap *s_tick_icon;
+static GBitmap *s_cross_icon;
+static TextLayer *s_confirm_text_layer;
+
 static void print_time() {
 	struct tm *temp_time = localtime(&s_time);
 	static char buffer[] = "00:00";
@@ -95,11 +102,56 @@ static void main_window_down_long_click_handler(ClickRecognizerRef recognizer, v
 	change_date(true);
 }
 
-static void click_config_provider(void *context) {
+void register_window_click_config_provider(void *context) {
+	//window_single_click_subscribe(BUTTON_ID_DOWN, (ClickHandler) my_next_click_handler);
+	//window_single_click_subscribe(BUTTON_ID_UP, (ClickHandler) my_previous_click_handler);
+}
+
+static void register_window_load(Window *window) {
+	APP_LOG(APP_LOG_LEVEL_INFO, "Register window load!");
+	
+	s_confirm_action_layer = action_bar_layer_create();
+	action_bar_layer_add_to_window(s_confirm_action_layer, window);
+	action_bar_layer_set_click_config_provider(s_confirm_action_layer, register_window_click_config_provider);
+
+	s_tick_icon = gbitmap_create_with_resource(RESOURCE_ID_TICK_ICON);
+	s_cross_icon = gbitmap_create_with_resource(RESOURCE_ID_CROSS_ICON);
+	
+	action_bar_layer_set_icon(s_confirm_action_layer, BUTTON_ID_UP, s_tick_icon);
+	action_bar_layer_set_icon(s_confirm_action_layer, BUTTON_ID_DOWN, s_cross_icon);
+	
+	s_confirm_text_layer = text_layer_create(GRect(5, 55, 130, 40));
+	text_layer_set_background_color(s_confirm_text_layer, GColorClear);
+	text_layer_set_text_color(s_confirm_text_layer, GColorBlack);
+	text_layer_set_font(s_confirm_text_layer, fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD));
+	text_layer_set_text(s_confirm_text_layer, "Confirma?");
+	layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_confirm_text_layer));
+}
+
+static void register_window_unload(Window *window) {
+	APP_LOG(APP_LOG_LEVEL_INFO, "Register window unload!");
+	action_bar_layer_destroy(s_confirm_action_layer);
+	gbitmap_destroy(s_tick_icon);
+	gbitmap_destroy(s_cross_icon);
+	text_layer_destroy(s_confirm_text_layer);
+}
+
+static void main_window_select_single_click_handler(ClickRecognizerRef recognizer, void *cotext) {
+	APP_LOG(APP_LOG_LEVEL_INFO, "Select clicked");
+	s_register_window = window_create();
+	window_set_window_handlers(s_register_window, (WindowHandlers) {
+		.load = register_window_load,
+		.unload = register_window_unload
+	});
+	window_stack_push(s_register_window, true);
+}
+
+static void main_window_click_config_provider(void *context) {
 	// Register the ClickHandlers
 	window_single_click_subscribe(BUTTON_ID_UP, main_window_up_single_click_handler);
 	window_single_click_subscribe(BUTTON_ID_DOWN, main_window_down_single_click_handler);
 	window_long_click_subscribe(BUTTON_ID_DOWN, 0, main_window_down_long_click_handler, NULL);
+	window_single_click_subscribe(BUTTON_ID_SELECT, main_window_select_single_click_handler);
 }
 
 static void main_window_load(Window *window) {
@@ -157,8 +209,17 @@ static void main_window_load(Window *window) {
 }
 
 static void main_window_unload(Window *window) {
-	// Destroy TextLayer
+	// Destroy TextLayers
 	text_layer_destroy(s_entry_type_layer);
+	text_layer_destroy(s_date_layer);
+	text_layer_destroy(s_time_layer);
+	// Destroy GBitmaps
+	gbitmap_destroy(s_entry_type_grid_bitmap);
+	gbitmap_destroy(s_entry_type_fill_bitmap);
+	// Destroy BitmapLayers
+	bitmap_layer_destroy(s_entry_type_grid_layer);
+	bitmap_layer_destroy(s_entry_type_fill_layer);
+	bitmap_layer_destroy(s_date_separator_layer);
 }
 
 static void init() {
@@ -171,7 +232,7 @@ static void init() {
 		.unload = main_window_unload
 	});
 
-	window_set_click_config_provider(s_main_window, click_config_provider);
+	window_set_click_config_provider(s_main_window, main_window_click_config_provider);
 
 	// Show the Window on the watch, with animated=true
 	window_stack_push(s_main_window, true);
