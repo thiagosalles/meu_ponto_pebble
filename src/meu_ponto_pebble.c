@@ -6,6 +6,8 @@
 #define ENTRY_TYPE_Y 5
 #define TIME_Y 50
 #define DATE_Y 110
+#define CONFIRM_Y 5
+#define REGISTERING_Y 55
 
 typedef enum EntryType {
 	ENTRY_1 = 0,
@@ -36,12 +38,16 @@ static time_t s_time;
 static TextLayer *s_date_layer;
 static TextLayer *s_time_layer;
 
-// Register window
-static Window *s_register_window;
+// Confirm window
+static Window *s_confirm_window;
 static ActionBarLayer *s_confirm_action_layer;
 static GBitmap *s_tick_icon;
 static GBitmap *s_cross_icon;
 static TextLayer *s_confirm_text_layer;
+
+// Register window
+static Window *s_register_window;
+static TextLayer *s_register_text_layer;
 
 static void print_time() {
 	struct tm *temp_time = localtime(&s_time);
@@ -50,22 +56,26 @@ static void print_time() {
 	text_layer_set_text(s_time_layer, buffer);
 }
 
-static void change_to_current_time() {
-	if (s_date) vibes_short_pulse();
-	s_time = time(NULL);
+static void change_time(bool update_to_current) {
+	if (!s_time || update_to_current) {
+		if (s_time) vibes_short_pulse();
+		s_time = time(NULL);
+	} else {
+		s_time = s_time - (60); // Subtracting one minute
+	}
 	print_time();
 }
 
 static void change_date(bool update_to_current) {
-	
+
 	if (!s_date || update_to_current) {
 		if (s_date) vibes_short_pulse();
-		s_date = time(NULL); 
+		s_date = time(NULL);
 	} else {
 		s_date = s_date - (60 * 60 * 24); // Subtracting one day
 	}
 	struct tm *temp_date = localtime(&s_date);
-	
+
 	// Create a long-lived buffer
 	static char buffer[] = "__/__/____";
 
@@ -102,25 +112,64 @@ static void main_window_down_long_click_handler(ClickRecognizerRef recognizer, v
 	change_date(true);
 }
 
-void register_window_click_config_provider(void *context) {
-	//window_single_click_subscribe(BUTTON_ID_DOWN, (ClickHandler) my_next_click_handler);
-	//window_single_click_subscribe(BUTTON_ID_UP, (ClickHandler) my_previous_click_handler);
+static void confirm_window_down_click_handler(ClickRecognizerRef recognizer, void *context) {
+	window_stack_pop(true);
 }
 
 static void register_window_load(Window *window) {
 	APP_LOG(APP_LOG_LEVEL_INFO, "Register window load!");
-	
+
+	s_register_text_layer = text_layer_create(GRect(0, REGISTERING_Y, 144, 40));
+	text_layer_set_background_color(s_register_text_layer, GColorClear);
+	text_layer_set_text_color(s_register_text_layer, GColorBlack);
+	text_layer_set_font(s_register_text_layer, fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD));
+	text_layer_set_text_alignment(s_register_text_layer, GTextAlignmentCenter);
+	text_layer_set_text(s_register_text_layer, "Registrando...");
+	layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_register_text_layer));
+}
+
+static void register_window_unload(Window *window) {
+	APP_LOG(APP_LOG_LEVEL_INFO, "Confirm window unload!");
+	text_layer_destroy(s_register_text_layer);
+}
+
+static void close_confirm_window() {
+	window_stack_remove(s_confirm_window, false);
+}
+
+static void open_register_window() {
+	s_register_window = window_create();
+	window_set_window_handlers(s_register_window, (WindowHandlers) {
+		.load = register_window_load,
+		.unload = register_window_unload
+	});
+	window_stack_push(s_register_window, true);
+	close_confirm_window();
+}
+
+static void confirm_window_up_click_handler(ClickRecognizerRef recognizer, void *context) {
+	open_register_window();
+}
+
+void confirm_window_click_config_provider(void *context) {
+	window_single_click_subscribe(BUTTON_ID_DOWN, confirm_window_down_click_handler);
+	window_single_click_subscribe(BUTTON_ID_UP, confirm_window_up_click_handler);
+}
+
+static void confirm_window_load(Window *window) {
+	APP_LOG(APP_LOG_LEVEL_INFO, "Confirm window load!");
+
 	s_confirm_action_layer = action_bar_layer_create();
 	action_bar_layer_add_to_window(s_confirm_action_layer, window);
-	action_bar_layer_set_click_config_provider(s_confirm_action_layer, register_window_click_config_provider);
+	action_bar_layer_set_click_config_provider(s_confirm_action_layer, confirm_window_click_config_provider);
 
 	s_tick_icon = gbitmap_create_with_resource(RESOURCE_ID_TICK_ICON);
 	s_cross_icon = gbitmap_create_with_resource(RESOURCE_ID_CROSS_ICON);
-	
+
 	action_bar_layer_set_icon(s_confirm_action_layer, BUTTON_ID_UP, s_tick_icon);
 	action_bar_layer_set_icon(s_confirm_action_layer, BUTTON_ID_DOWN, s_cross_icon);
-	
-	s_confirm_text_layer = text_layer_create(GRect(5, 55, 130, 40));
+
+	s_confirm_text_layer = text_layer_create(GRect(5, CONFIRM_Y, 130, 40));
 	text_layer_set_background_color(s_confirm_text_layer, GColorClear);
 	text_layer_set_text_color(s_confirm_text_layer, GColorBlack);
 	text_layer_set_font(s_confirm_text_layer, fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD));
@@ -128,30 +177,44 @@ static void register_window_load(Window *window) {
 	layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_confirm_text_layer));
 }
 
-static void register_window_unload(Window *window) {
-	APP_LOG(APP_LOG_LEVEL_INFO, "Register window unload!");
+static void confirm_window_unload(Window *window) {
+	APP_LOG(APP_LOG_LEVEL_INFO, "Confirm window unload!");
 	action_bar_layer_destroy(s_confirm_action_layer);
 	gbitmap_destroy(s_tick_icon);
 	gbitmap_destroy(s_cross_icon);
 	text_layer_destroy(s_confirm_text_layer);
 }
 
-static void main_window_select_single_click_handler(ClickRecognizerRef recognizer, void *cotext) {
-	APP_LOG(APP_LOG_LEVEL_INFO, "Select clicked");
-	s_register_window = window_create();
-	window_set_window_handlers(s_register_window, (WindowHandlers) {
-		.load = register_window_load,
-		.unload = register_window_unload
+static void open_confirm_window() {
+	s_confirm_window = window_create();
+	window_set_window_handlers(s_confirm_window, (WindowHandlers) {
+		.load = confirm_window_load,
+		.unload = confirm_window_unload
 	});
-	window_stack_push(s_register_window, true);
+	window_stack_push(s_confirm_window, true);
+}
+
+static void main_window_select_single_click_handler(ClickRecognizerRef recognizer, void *cotext) {
+	change_time(false);
+}
+
+static void main_window_select_long_click_handler(ClickRecognizerRef recognizer, void *context) {
+	change_time(true);
+}
+
+static void main_window_up_long_click_handler(ClickRecognizerRef recognizer, void *context) {
+	open_confirm_window();
 }
 
 static void main_window_click_config_provider(void *context) {
-	// Register the ClickHandlers
 	window_single_click_subscribe(BUTTON_ID_UP, main_window_up_single_click_handler);
+	window_long_click_subscribe(BUTTON_ID_UP, 0, main_window_up_long_click_handler, NULL);
+
 	window_single_click_subscribe(BUTTON_ID_DOWN, main_window_down_single_click_handler);
 	window_long_click_subscribe(BUTTON_ID_DOWN, 0, main_window_down_long_click_handler, NULL);
+
 	window_single_click_subscribe(BUTTON_ID_SELECT, main_window_select_single_click_handler);
+	window_long_click_subscribe(BUTTON_ID_SELECT, 0, main_window_select_long_click_handler, NULL);
 }
 
 static void main_window_load(Window *window) {
@@ -179,22 +242,22 @@ static void main_window_load(Window *window) {
 	text_layer_set_text_color(s_entry_type_layer, GColorBlack);
 	text_layer_set_font(s_entry_type_layer, fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD));
 	text_layer_set_text_alignment(s_entry_type_layer, GTextAlignmentCenter);
-	
+
 	s_date_layer = text_layer_create(GRect(0, DATE_Y, 144, 40));
 	text_layer_set_background_color(s_date_layer, GColorClear);
 	text_layer_set_text_color(s_date_layer, GColorBlack);
 	text_layer_set_font(s_date_layer, fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD));
 	text_layer_set_text_alignment(s_date_layer, GTextAlignmentCenter);
-	
+
 	s_time_layer = text_layer_create(GRect(0, TIME_Y, 144, 50));
 	text_layer_set_background_color(s_time_layer, GColorClear);
 	text_layer_set_text_color(s_time_layer, GColorBlack);
 	text_layer_set_font(s_time_layer, fonts_get_system_font(FONT_KEY_BITHAM_42_BOLD));
 	text_layer_set_text_alignment(s_time_layer, GTextAlignmentCenter);
-	
+
 	// Showing the time
-	change_to_current_time();
-	
+	change_time(true);
+
 	// Showing the date
 	change_date(true);
 
