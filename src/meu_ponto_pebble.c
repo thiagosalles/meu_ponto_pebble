@@ -25,13 +25,20 @@ typedef enum EntryType {
 	EXIT_2
 } EntryType;
 const int EntryTypeCount = EXIT_2 - ENTRY_1 + 1;
-const int EntryTypeOrder = +1;
+const int EntryTypeOrder = -1;
 
 const char* EntryTypeStrings[] = {
 	"Entrada 1",
 	"Saida 1",
 	"Entrada 2",
 	"Saida 2"
+};
+
+const int EntryTypeMinutes[] = {
+	540,
+	720,
+	780,
+	1080
 };
 
 static Window *s_main_window;
@@ -58,6 +65,29 @@ static TextLayer *s_confirm_text_layer;
 static Window *s_register_window;
 static TextLayer *s_register_text_layer;
 static bool processing = false;
+
+
+static int getTimeInMinutes() {
+	if (s_time) {
+		struct tm *temp_time = localtime(&s_time);
+		return (temp_time->tm_hour * 60) + temp_time->tm_min;
+	}
+	return 0;
+}
+
+static EntryType getNearestEntryType() {
+	int time_in_minutes = getTimeInMinutes();
+	EntryType nearest_entry_type = ENTRY_1;
+	int nearest_difference = abs(time_in_minutes - EntryTypeMinutes[nearest_entry_type]);
+	for (int entry_type = EXIT_1; entry_type <= EXIT_2; entry_type++) {
+		int difference = abs(time_in_minutes - EntryTypeMinutes[entry_type]);
+		if (difference <= nearest_difference) {
+			nearest_entry_type = entry_type;
+			nearest_difference = difference;
+		}
+	}
+	return nearest_entry_type;
+}
 
 static void inbox_received_callback(DictionaryIterator *iterator, void *context) {
 	APP_LOG(APP_LOG_LEVEL_INFO, "Message received!");
@@ -160,7 +190,7 @@ static void print_entry_type() {
 }
 
 static void change_entry_type() {
-	entry_type = (entry_type + EntryTypeOrder) % EntryTypeCount;
+	entry_type = (entry_type + EntryTypeOrder + EntryTypeCount) % EntryTypeCount;
 	print_entry_type();
 }
 
@@ -349,7 +379,7 @@ static void main_window_load(Window *window) {
 	change_date(true);
 
 	// Setting the starting EntryType
-	entry_type = ENTRY_1;
+	entry_type = getNearestEntryType();
 	print_entry_type();
 
 	// Putting TextLayer on the window
