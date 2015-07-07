@@ -1,6 +1,11 @@
 {
     "appKeys": {
-        "dummy": 0
+		"STATUS": 0,
+		"YEAR": 1,
+		"MONTH": 2,
+		"DAY": 3,
+		"ENTRY_TYPE": 4,
+		"TIME": 5
     },
     "capabilities": [
         ""

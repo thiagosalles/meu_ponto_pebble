@@ -9,6 +9,15 @@
 #define CONFIRM_Y 5
 #define REGISTERING_Y 55
 
+enum AppMessageKeys {
+	STATUS = 0,
+	YEAR = 1,
+	MONTH = 2,
+	DAY = 3,
+	ENTRY_TYPE = 4,
+	TIME = 5
+};
+
 typedef enum EntryType {
 	ENTRY_1 = 0,
 	EXIT_1,
@@ -48,6 +57,61 @@ static TextLayer *s_confirm_text_layer;
 // Register window
 static Window *s_register_window;
 static TextLayer *s_register_text_layer;
+static bool processing = false;
+
+static void inbox_received_callback(DictionaryIterator *iterator, void *context) {
+	APP_LOG(APP_LOG_LEVEL_INFO, "Message received!");
+
+	// Store incoming information
+	static int status;
+
+	// Read first item
+	Tuple *t = dict_read_first(iterator);
+
+	// For all items
+	while(t != NULL) {
+		// Which key was received?
+		switch(t->key) {
+			case STATUS:
+				status = t->value->int32;
+				break;
+			default:
+				APP_LOG(APP_LOG_LEVEL_ERROR, "Key %d not recognized!", (int)t->key);
+				break;
+		}
+
+		// Look for next item
+		t = dict_read_next(iterator);
+	}
+
+	if (s_register_window && window_stack_contains_window(s_register_window)) {
+		if (status) {
+			text_layer_set_text(s_register_text_layer, "OK!");
+			window_stack_remove(s_main_window, false);
+		} else {
+			text_layer_set_text(s_register_text_layer, "ERRO!");
+		}
+	}
+	APP_LOG(APP_LOG_LEVEL_INFO, "Status: %d", status);
+	processing = false;
+}
+
+static void inbox_dropped_callback(AppMessageResult reason, void *context) {
+	APP_LOG(APP_LOG_LEVEL_ERROR, "Message dropped!");
+	processing = false;
+}
+
+static void outbox_failed_callback(DictionaryIterator *iterator, AppMessageResult reason, void *context) {
+	APP_LOG(APP_LOG_LEVEL_ERROR, "Outbox send failed!");
+	window_stack_remove(s_confirm_window, false);
+	processing = false;
+}
+
+static void outbox_sent_callback(DictionaryIterator *iterator, void *context) {
+	APP_LOG(APP_LOG_LEVEL_INFO, "Outbox send success!");
+	window_stack_remove(s_confirm_window, false);
+	processing = true;
+}
 
 static void print_time() {
 	struct tm *temp_time = localtime(&s_time);
@@ -133,8 +197,31 @@ static void register_window_unload(Window *window) {
 	text_layer_destroy(s_register_text_layer);
 }
 
-static void close_confirm_window() {
-	window_stack_remove(s_confirm_window, false);
+static void send_register() {
+	// Begin dictionary
+	DictionaryIterator *iter;
+	app_message_outbox_begin(&iter);
+
+	struct tm *temp_date = localtime(&s_date);
+	static char buffer_year[] = "0000";
+	static char buffer_month[] = "00";
+	static char buffer_day[] = "00";
+	strftime(buffer_year, sizeof("0000"), "%Y", temp_date);
+	strftime(buffer_month, sizeof("00"), "%m", temp_date);
+	strftime(buffer_day, sizeof("00"), "%d", temp_date);
+	struct tm *temp_time = localtime(&s_time);
+	static char buffer_time[] = "00:00";
+	strftime(buffer_time, sizeof("00:00"), "%H:%M", temp_time);
+
+	// Add a key-value pair
+	dict_write_cstring(iter, YEAR, buffer_year);
+	dict_write_cstring(iter, MONTH, buffer_month);
+	dict_write_cstring(iter, DAY, buffer_day);
+	dict_write_uint8(iter, ENTRY_TYPE, entry_type);
+	dict_write_cstring(iter, TIME, buffer_time);
+
+	// Send the message!
+	app_message_outbox_send();
 }
 
 static void open_register_window() {
@@ -144,7 +231,7 @@ static void open_register_window() {
 		.unload = register_window_unload
 	});
 	window_stack_push(s_register_window, true);
-	close_confirm_window();
+	send_register();
 }
 
 static void confirm_window_up_click_handler(ClickRecognizerRef recognizer, void *context) {
@@ -296,6 +383,15 @@ static void init() {
 	});
 
 	window_set_click_config_provider(s_main_window, main_window_click_config_provider);
+
+	// Register callbacks
+	app_message_register_inbox_received(inbox_received_callback);
+	app_message_register_inbox_dropped(inbox_dropped_callback);
+	app_message_register_outbox_failed(outbox_failed_callback);
+	app_message_register_outbox_sent(outbox_sent_callback);
+
+	// Open AppMessage
+	app_message_open(app_message_inbox_size_maximum(), app_message_outbox_size_maximum());
 
 	// Show the Window on the watch, with animated=true
 	window_stack_push(s_main_window, true);

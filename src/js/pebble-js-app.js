@@ -1,29 +1,54 @@
 var xhrRequest = function (url, type, data, callback) {
 	var xhr = new XMLHttpRequest();
-	xhr.onload = function () {
-		callback(this.responseText);
+	xhr.onload = function (e) {
+		callback(this.responseText, e.target.status);
 	};
 	xhr.open(type, url);
 	xhr.send(data);
 };
 
-function registerEntry() {
+serialize = function(obj) {
+	var mapping = {
+		"YEAR": "year",
+		"MONTH": "month",
+		"DAY": "day",
+		"ENTRY_TYPE": "entry",
+		"TIME": "value"
+	};
+	var str = [];
+	for(var param in mapping) {
+		if (obj.hasOwnProperty(param)) {
+			str.push(mapping[param] + "=" + encodeURIComponent(obj[param]));
+		}
+	}
+
+	// Hardcoded credentials
+	str.push("user=<user>");
+	str.push("token=<token>");
+
+	return str.join("&");
+}
+
+function registerEntry(e) {
+
+	var data = serialize(e.payload);
+
 	// Send request to MeuPonto
-	xhrRequest('http://meu-ponto.appspot.com/register', 'POST', "", function(responseText) {
+	xhrRequest('http://meu-ponto.appspot.com/register', 'POST', data, function(responseText, statusCode) {
 		// responseText contains a JSON object with weather info
-		var json = JSON.parse(responseText);
-		console.log(json);
+		//var json = JSON.parse(responseText);
+		console.log(responseText);
 
 		// Assemble dictionary using our keys
 		var dictionary = {
-			'STATUS': 0
+			'STATUS': (statusCode == 200) ? 1 : 0
 		};
 
 		// Send to Pebble
 		Pebble.sendAppMessage(dictionary, function(e) {
-			console.log('Weather info sent to Pebble successfully!');
+			console.log('Result info sent to Pebble successfully!');
 		}, function(e) {
-			console.log('Error sending weather info to Pebble!');
+			console.log('Error sending result info to Pebble!');
 		});
 	});
 
@@ -32,5 +57,5 @@ function registerEntry() {
 // Listen for when an AppMessage is received
 Pebble.addEventListener('appmessage', function(e) {
 	console.log('AppMessage received!');
-	registerEntry();
+	registerEntry(e);
 });
