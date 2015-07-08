@@ -7,6 +7,10 @@ var xhrRequest = function (url, type, data, callback) {
 	xhr.send(data);
 };
 
+hasCredentials = function() {
+	return !!(localStorage.getItem('user') && localStorage.getItem('token'));
+}
+
 serialize = function(obj) {
 	var mapping = {
 		"YEAR": "year",
@@ -22,9 +26,12 @@ serialize = function(obj) {
 		}
 	}
 
+	var user = localStorage.getItem('user') || "";
+	var token = localStorage.getItem('token') || "";
+
 	// Hardcoded credentials
-	str.push("user=<user>");
-	str.push("token=<token>");
+	str.push("user=" + encodeURIComponent(user));
+	str.push("token=" + encodeURIComponent(token));
 
 	return str.join("&");
 }
@@ -58,4 +65,24 @@ function registerEntry(e) {
 Pebble.addEventListener('appmessage', function(e) {
 	console.log('AppMessage received!');
 	registerEntry(e);
+});
+
+Pebble.addEventListener('showConfiguration', function(e) {
+	var params = serialize({});
+	Pebble.openURL('http://meu-ponto.appspot.com/pebble?' + params);
+});
+
+Pebble.addEventListener('webviewclosed', function(e) {
+	var configuration = JSON.parse(decodeURIComponent(e.response));
+	if (configuration.clear) {
+		localStorage.clear();
+	} else if (configuration.user && configuration.token) {
+		localStorage.setItem('user', configuration.user.trim());
+		localStorage.setItem('token', configuration.token.trim());
+	}
+	console.log('Configuration window returned: ', JSON.stringify(configuration));
+});
+
+Pebble.addEventListener('ready', function(e) {
+	console.log('Has credentials? ' + hasCredentials());
 });

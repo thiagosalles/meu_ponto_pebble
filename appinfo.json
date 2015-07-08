@@ -8,7 +8,7 @@
 		"TIME": 5
     },
     "capabilities": [
-        ""
+        "configurable"
     ],
     "companyName": "Thiago Salles",
     "longName": "Meu Ponto",
