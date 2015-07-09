@@ -1,10 +1,17 @@
 var xhrRequest = function (url, type, data, callback) {
 	var xhr = new XMLHttpRequest();
-	xhr.onload = function (e) {
-		callback(this.responseText, e.target.status);
+	xhr.onload = function () {
+		callback(this.responseText, this.status);
 	};
-	xhr.open(type, url);
-	xhr.send(data);
+	xhr.open(type, url, true);
+	if (type == "POST") {
+		xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+		xhr.setRequestHeader("Content-length", data.length);
+		xhr.setRequestHeader("Connection", "close");
+		xhr.send(data);
+	} else {
+		xhr.send();
+	}
 };
 
 hasCredentials = function() {
