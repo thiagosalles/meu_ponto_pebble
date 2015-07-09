@@ -19,39 +19,41 @@ hasCredentials = function() {
 }
 
 serialize = function(obj) {
+
+	obj.USER = localStorage.getItem('user') || "";
+	obj.TOKEN = localStorage.getItem('token') || "";
+
 	var mapping = {
 		"YEAR": "year",
 		"MONTH": "month",
 		"DAY": "day",
 		"ENTRY_TYPE": "entry",
-		"TIME": "value"
+		"TIME": "value",
+		"USER": "user",
+		"TOKEN": "token"
 	};
+
 	var str = [];
 	for(var param in mapping) {
 		if (obj.hasOwnProperty(param)) {
 			str.push(mapping[param] + "=" + encodeURIComponent(obj[param]));
 		}
 	}
-
-	var user = localStorage.getItem('user') || "";
-	var token = localStorage.getItem('token') || "";
-
-	// Hardcoded credentials
-	str.push("user=" + encodeURIComponent(user));
-	str.push("token=" + encodeURIComponent(token));
-
 	return str.join("&");
 }
 
 function registerEntry(e) {
 
 	var data = serialize(e.payload);
+	console.log("Data: " + data);
 
 	// Send request to MeuPonto
 	xhrRequest('http://meu-ponto.appspot.com/register', 'POST', data, function(responseText, statusCode) {
 		// responseText contains a JSON object with weather info
 		//var json = JSON.parse(responseText);
-		console.log(responseText);
+		console.log("-----O QUE DEU?-----");
+		console.log("responseText: " + responseText);
+		console.log("statusCode: " + statusCode);
 
 		// Assemble dictionary using our keys
 		var dictionary = {

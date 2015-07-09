@@ -5,7 +5,7 @@
 		<script>
 			function getUrlParams() {
 				var params = {};
-				var parts = location.search.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(m, key, value) {
+				location.search.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(m, key, value) {
 					params[key] = value;
 				});
 				return params;
