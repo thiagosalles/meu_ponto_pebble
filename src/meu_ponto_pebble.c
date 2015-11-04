@@ -8,6 +8,7 @@
 #define DATE_Y 110
 #define CONFIRM_Y 5
 #define REGISTERING_Y 55
+#define CLOSE_TIMEOUT_MS 15000
 
 enum AppMessageKeys {
 	STATUS = 0,
@@ -89,6 +90,10 @@ static EntryType getNearestEntryType() {
 	return nearest_entry_type;
 }
 
+static void close_app_cb(void *data) {
+	window_stack_pop_all(true);
+}
+
 static void inbox_received_callback(DictionaryIterator *iterator, void *context) {
 	APP_LOG(APP_LOG_LEVEL_INFO, "Message received!");
 
@@ -118,6 +123,7 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
 		if (status) {
 			text_layer_set_text(s_register_text_layer, "OK!");
 			window_stack_remove(s_main_window, false);
+			app_timer_register(CLOSE_TIMEOUT_MS, close_app_cb, NULL);
 		} else {
 			text_layer_set_text(s_register_text_layer, "ERRO!");
 		}
