@@ -90,6 +90,9 @@ static EntryType getNearestEntryType() {
 	return nearest_entry_type;
 }
 
+static void close_app_handler(ClickRecognizerRef recognizer, void *context) {
+	window_stack_pop_all(true);
+}
 static void close_app_cb(void *data) {
 	window_stack_pop_all(true);
 }
@@ -122,6 +125,7 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
 	if (s_register_window && window_stack_contains_window(s_register_window)) {
 		if (status) {
 			text_layer_set_text(s_register_text_layer, "OK!");
+			window_single_click_subscribe(BUTTON_ID_SELECT, close_app_handler);
 			window_stack_remove(s_main_window, false);
 			app_timer_register(CLOSE_TIMEOUT_MS, close_app_cb, NULL);
 		} else {
