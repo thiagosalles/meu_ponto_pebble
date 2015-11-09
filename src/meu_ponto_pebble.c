@@ -8,6 +8,7 @@
 #define DATE_Y 110
 #define CONFIRM_Y 5
 #define REGISTERING_Y 55
+#define CLOSE_TIMEOUT_MS 15000
 
 enum AppMessageKeys {
 	STATUS = 0,
@@ -89,6 +90,13 @@ static EntryType getNearestEntryType() {
 	return nearest_entry_type;
 }
 
+static void close_app_handler(ClickRecognizerRef recognizer, void *context) {
+	window_stack_pop_all(true);
+}
+static void close_app_cb(void *data) {
+	window_stack_pop_all(true);
+}
+
 static void inbox_received_callback(DictionaryIterator *iterator, void *context) {
 	APP_LOG(APP_LOG_LEVEL_INFO, "Message received!");
 
@@ -118,6 +126,7 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
 		if (status) {
 			text_layer_set_text(s_register_text_layer, "OK!");
 			window_stack_remove(s_main_window, false);
+			app_timer_register(CLOSE_TIMEOUT_MS, close_app_cb, NULL);
 		} else {
 			text_layer_set_text(s_register_text_layer, "ERRO!");
 		}
@@ -254,12 +263,17 @@ static void send_register() {
 	app_message_outbox_send();
 }
 
+void register_window_click_config_provider(void *context) {
+	window_single_click_subscribe(BUTTON_ID_SELECT, close_app_handler);
+}
+
 static void open_register_window() {
 	s_register_window = window_create();
 	window_set_window_handlers(s_register_window, (WindowHandlers) {
 		.load = register_window_load,
 		.unload = register_window_unload
 	});
+	window_set_click_config_provider(s_register_window, register_window_click_config_provider);
 	window_stack_push(s_register_window, true);
 	send_register();
 }
