@@ -125,7 +125,6 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
 	if (s_register_window && window_stack_contains_window(s_register_window)) {
 		if (status) {
 			text_layer_set_text(s_register_text_layer, "OK!");
-			window_single_click_subscribe(BUTTON_ID_SELECT, close_app_handler);
 			window_stack_remove(s_main_window, false);
 			app_timer_register(CLOSE_TIMEOUT_MS, close_app_cb, NULL);
 		} else {
@@ -264,12 +263,17 @@ static void send_register() {
 	app_message_outbox_send();
 }
 
+void register_window_click_config_provider(void *context) {
+	window_single_click_subscribe(BUTTON_ID_SELECT, close_app_handler);
+}
+
 static void open_register_window() {
 	s_register_window = window_create();
 	window_set_window_handlers(s_register_window, (WindowHandlers) {
 		.load = register_window_load,
 		.unload = register_window_unload
 	});
+	window_set_click_config_provider(s_register_window, register_window_click_config_provider);
 	window_stack_push(s_register_window, true);
 	send_register();
 }
